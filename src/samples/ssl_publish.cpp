@@ -49,14 +49,19 @@
 #include <cstring>
 #include "mqtt/async_client.h"
 
-const std::string DFLT_SERVER_ADDRESS	{ "ssl://localhost:18885" };
-const std::string DFLT_CLIENT_ID		{ "ssl_publish_cpp" };
 
-const std::string KEY_STORE				{ "client.pem" };
-const std::string TRUST_STORE			{ "test-root-ca.crt" };
+//const std::string DFLT_SERVER_ADDRESS	{ "ws://localhost:8883" };
+const std::string DFLT_SERVER_ADDRESS	{ "tcp://172.18.2.2:8883" };
+//const std::string DFLT_SERVER_ADDRESS	{ "ssl://[fe80::c910:7bc2:c53:7f6d]:8883" };
+//const std::string DFLT_SERVER_ADDRESS	{ "ssl://test.mosquitto.org:8883" };
+//const std::string DFLT_CLIENT_ID		{ "ssl_publish_cpp" };
+const std::string DFLT_CLIENT_ID		{ "111" };
 
-const std::string LWT_TOPIC				{ "events/disconnect" };
-const std::string LWT_PAYLOAD			{ "Last will and testament." };
+const std::string KEY_STORE				{ "/home/qingchen/Documents/ca/client.pem" };
+const std::string TRUST_STORE			{ "/home/qingchen/Documents/ca/ca.crt" };
+
+const std::string LWT_TOPIC				{ "PLUGIN_STATUS" };
+const std::string LWT_PAYLOAD			{ "RUN" };
 
 const int  QOS = 1;
 const auto TIMEOUT = std::chrono::seconds(10);
@@ -69,16 +74,16 @@ const auto TIMEOUT = std::chrono::seconds(10);
 class callback : public virtual mqtt::callback
 {
 public:
-	void connection_lost(const std::string& cause) override {
-		std::cout << "\nConnection lost" << std::endl;
-		if (!cause.empty())
-			std::cout << "\tcause: " << cause << std::endl;
-	}
+    void connection_lost(const std::string& cause) override {
+        std::cout << "\nConnection lost" << std::endl;
+        if (!cause.empty())
+            std::cout << "\tcause: " << cause << std::endl;
+    }
 
-	void delivery_complete(mqtt::delivery_token_ptr tok) override {
-		std::cout << "\tDelivery complete for token: "
-			<< (tok ? tok->get_message_id() : -1) << std::endl;
-	}
+    void delivery_complete(mqtt::delivery_token_ptr tok) override {
+        std::cout << "\tDelivery complete for token: "
+                  << (tok ? tok->get_message_id() : -1) << std::endl;
+    }
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -87,75 +92,92 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-	string	address  = (argc > 1) ? string(argv[1]) : DFLT_SERVER_ADDRESS,
-			clientID = (argc > 2) ? string(argv[2]) : DFLT_CLIENT_ID;
+    string	address  = (argc > 1) ? string(argv[1]) : DFLT_SERVER_ADDRESS,
+            clientID = (argc > 2) ? string(argv[2]) : DFLT_CLIENT_ID;
 
-	// Note that we don't actually need to open the trust or key stores.
-	// We just need a quick, portable way to check that they exist.
-	{
-		ifstream tstore(TRUST_STORE);
-		if (!tstore) {
-			cerr << "The trust store file does not exist: " << TRUST_STORE << endl;
-			cerr << "  Get a copy from \"paho.mqtt.c/test/ssl/test-root-ca.crt\"" << endl;;
-			return 1;
-		}
+    // Note that we don't actually need to open the trust or key stores.
+    // We just need a quick, portable way to check that they exist.
+    {
+        ifstream tstore(TRUST_STORE);
+        if (!tstore) {
+            cerr << "The trust store file does not exist: " << TRUST_STORE << endl;
+            cerr << "  Get a copy from \"paho.mqtt.c/test/ssl/test-root-ca.crt\"" << endl;;
+            return 1;
+        }
 
-		ifstream kstore(KEY_STORE);
-		if (!kstore) {
-			cerr << "The key store file does not exist: " << KEY_STORE << endl;
-			cerr << "  Get a copy from \"paho.mqtt.c/test/ssl/client.pem\"" << endl;
-			return 1;
-		}
+        ifstream kstore(KEY_STORE);
+        if (!kstore) {
+            cerr << "The key store file does not exist: " << KEY_STORE << endl;
+            cerr << "  Get a copy from \"paho.mqtt.c/test/ssl/client.pem\"" << endl;
+            return 1;
+        }
     }
 
-	cout << "Initializing for server '" << address << "'..." << endl;
-	mqtt::async_client client(address, clientID);
+    cout << "Initializing for server '" << address << "'..." << endl;
+    mqtt::async_client client(address, clientID);
 
-	callback cb;
-	client.set_callback(cb);
 
-	mqtt::connect_options connopts("testuser", "testpassword");
 
-	mqtt::ssl_options sslopts;
-	sslopts.set_trust_store(TRUST_STORE);
-	sslopts.set_key_store(KEY_STORE);
+    callback cb;
+    client.set_callback(cb);
 
-	mqtt::message willmsg(LWT_TOPIC, LWT_PAYLOAD, QOS, true);
-	mqtt::will_options will(willmsg);
+    mqtt::connect_options connopts("", "");
+    //mqtt::connect_options connopts ;
 
-	connopts.set_will(will);
-	connopts.set_ssl(sslopts);
+    mqtt::ssl_options sslopts;
+    sslopts.set_trust_store(TRUST_STORE);
+    sslopts.set_key_store(KEY_STORE);
+    //sslopts.ca_path("/home/qingchen/Documents/ca/ca.pem") ;
+    //sslopts.ca_path("/home/qingchen/Documents/ca/mosquitto.org.crt") ;
 
-	cout << "  ...OK" << endl;
+    sslopts.set_ssl_version(1) ;
+    sslopts.set_verify(false) ;
 
-	try {
-		// Connect using SSL/TLS
+    //sslopts.set_enabled_cipher_suites("") ;
+    //sslopts.set_enable_server_cert_auth(true) ;
+    //sslopts.set_ssl_version(4) ;
 
-		cout << "\nConnecting..." << endl;
-		mqtt::token_ptr conntok = client.connect(connopts);
-		cout << "Waiting for the connection..." << endl;
-		conntok->wait();
-		cout << "  ...OK" << endl;
 
-		// Send a message
+    cout<<"ssl ca path "<<sslopts.ca_path()<<endl ;
 
-		cout << "\nSending message..." << endl;
-		auto msg = mqtt::make_message("hello", "Hello secure C++ world!", QOS, false);
-		client.publish(msg)->wait_for(TIMEOUT);
-		cout << "  ...OK" << endl;
 
-		// Disconnect
+    mqtt::message willmsg(LWT_TOPIC, LWT_PAYLOAD, QOS, true);
+    mqtt::will_options will(willmsg);
 
-		cout << "\nDisconnecting..." << endl;
-		conntok = client.disconnect();
-		conntok->wait();
-		cout << "  ...OK" << endl;
-	}
-	catch (const mqtt::exception& exc) {
-		cerr << exc.what() << endl;
-		return 1;
-	}
+    connopts.set_will(will);
+    connopts.set_ssl(sslopts);
 
- 	return 0;
+
+    cout << "  ...OK" << endl;
+
+    try {
+        // Connect using SSL/TLS
+
+        cout << "\nConnecting..." << endl;
+        mqtt::token_ptr conntok = client.connect(connopts);
+        cout << "Waiting for the connection..." << endl;
+        conntok->wait();
+        cout << "  ...OK" << endl;
+
+        // Send a message
+
+        cout << "\nSending message..." << endl;
+        auto msg = mqtt::make_message("hello", "Hello secure C++ world!", QOS, false);
+        client.publish(msg)->wait_for(TIMEOUT);
+        cout << "  ...OK" << endl;
+
+        // Disconnect
+
+        cout << "\nDisconnecting..." << endl;
+        conntok = client.disconnect();
+        conntok->wait();
+        cout << "  ...OK" << endl;
+    }
+    catch (const mqtt::exception& exc) {
+        cerr << exc.what() << endl;
+        return 1;
+    }
+
+    return 0;
 }
 
