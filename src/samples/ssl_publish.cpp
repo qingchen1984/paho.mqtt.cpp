@@ -51,13 +51,15 @@
 
 
 //const std::string DFLT_SERVER_ADDRESS	{ "ws://localhost:8883" };
-const std::string DFLT_SERVER_ADDRESS	{ "tcp://172.18.2.2:8883" };
+//const std::string DFLT_SERVER_ADDRESS	{ "tcp://172.18.2.2:8883" };
+const std::string DFLT_SERVER_ADDRESS	{ "ssl://172.18.2.2:8883" };
 //const std::string DFLT_SERVER_ADDRESS	{ "ssl://[fe80::c910:7bc2:c53:7f6d]:8883" };
 //const std::string DFLT_SERVER_ADDRESS	{ "ssl://test.mosquitto.org:8883" };
 //const std::string DFLT_CLIENT_ID		{ "ssl_publish_cpp" };
-const std::string DFLT_CLIENT_ID		{ "111" };
+const std::string DFLT_CLIENT_ID		{ "11111" };
 
-const std::string KEY_STORE				{ "/home/qingchen/Documents/ca/client.pem" };
+//const std::string KEY_STORE				{ "/home/qingchen/Documents/ca/client.pem" };
+const std::string KEY_STORE				{ "/home/qingchen/Documents/ca/ca.crt" };
 const std::string TRUST_STORE			{ "/home/qingchen/Documents/ca/ca.crt" };
 
 const std::string LWT_TOPIC				{ "PLUGIN_STATUS" };
@@ -126,8 +128,9 @@ int main(int argc, char* argv[])
 
     mqtt::ssl_options sslopts;
     sslopts.set_trust_store(TRUST_STORE);
-    sslopts.set_key_store(KEY_STORE);
-    //sslopts.ca_path("/home/qingchen/Documents/ca/ca.pem") ;
+    //sslopts.set_key_store(KEY_STORE);
+
+    sslopts.ca_path("/home/qingchen/Documents/ca/ca.crt") ;
     //sslopts.ca_path("/home/qingchen/Documents/ca/mosquitto.org.crt") ;
 
     sslopts.set_ssl_version(1) ;
@@ -136,6 +139,7 @@ int main(int argc, char* argv[])
     //sslopts.set_enabled_cipher_suites("") ;
     //sslopts.set_enable_server_cert_auth(true) ;
     //sslopts.set_ssl_version(4) ;
+
 
 
     cout<<"ssl ca path "<<sslopts.ca_path()<<endl ;
@@ -162,7 +166,8 @@ int main(int argc, char* argv[])
         // Send a message
 
         cout << "\nSending message..." << endl;
-        auto msg = mqtt::make_message("hello", "Hello secure C++ world!", QOS, false);
+        //auto msg = mqtt::make_message("hello", "Hello secure C++ world!", QOS, false);
+        auto msg = mqtt::make_message("PLUGIN_STATUS", "RUN", QOS, false);
         client.publish(msg)->wait_for(TIMEOUT);
         cout << "  ...OK" << endl;
 
