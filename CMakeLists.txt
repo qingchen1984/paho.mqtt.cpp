@@ -45,7 +45,7 @@ else()
   option(PAHO_WITH_SSL "Build SSL-enabled library" TRUE)
 endif()
 
-option(PAHO_BUILD_SAMPLES "Build sample programs" FALSE)
+option(PAHO_BUILD_SAMPLES "Build sample programs" TRUE)
 option(PAHO_BUILD_TESTS "Build tests" FALSE)
 option(PAHO_BUILD_DOCUMENTATION "Create and install the API documentation (requires Doxygen)" FALSE)
 
